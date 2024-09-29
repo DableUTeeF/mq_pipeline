@@ -1,8 +1,6 @@
 FROM python:3.9
 WORKDIR /app
-RUN pip install fastapi
-RUN pip install uvicorn
-RUN pip install python-multipart
 RUN pip install pika
+RUN pip install requests
 COPY . .
-CMD 'python server_fastapi.py'
+CMD 'python inter_server_fastapi.py'

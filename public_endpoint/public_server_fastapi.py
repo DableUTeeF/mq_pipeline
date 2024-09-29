@@ -1,11 +1,11 @@
-from fastapi import FastAPI, File, UploadFile
 from fastapi import FastAPI, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 import uvicorn
-import io
+import json
 import pika
 import os
 import uuid
+import time
 
 
 app = FastAPI()
@@ -31,7 +31,12 @@ class RPCClient(object):
         if self.corr_id == props.correlation_id:
             self.response = body
 
-    def call(self, body):
+    def close(self):
+        self.channel.close()
+        self.connection.close()
+
+    def call(self, body, headers):
+        print('call', headers)
         self.response = None
         self.corr_id = str(uuid.uuid4())
         self.channel.basic_publish(
@@ -48,12 +53,18 @@ class RPCClient(object):
 
 
 @app.post('/spellchecker')
-def _file_upload(file: UploadFile, file2: UploadFile, delimiter: str = Form(","), returnType: str = Form("html")):
-    data = {'delimiter': delimiter, returnType: returnType}
-    files = {'file': file.file.read(), 'file2': file2.file.read()}
+def _file_upload(file: UploadFile, file2: UploadFile, request: Request, delimiter: str = Form(","), returnType: str = Form("html")):
+    data = {'delimiter': delimiter, 'returnType': returnType}
+    print('public', data, flush=True)
+    files = {'file': file.file.read().decode('utf-8'), 'file2': file2.file.read().decode('utf-8')}
     client = RPCClient()
-    result = client.call({'data': data, 'files': files})
-    return JSONResponse(content=result)
+    result = client.call(json.dumps({'data': data,
+                                     'files': files,
+                                     'url': 'http://gpu_worker:8000/spellchecker'
+                                     }))
+    print(result)
+    client.close()
+    return JSONResponse(content=json.loads(result))
 
 
 if __name__ == "__main__":
