@@ -1,0 +1,50 @@
+services:
+  sr-mq:
+    container_name: mq_sample-sr-mq
+    image: rabbitmq:3-management
+    hostname: sr-mq
+    restart: always
+    networks:
+      - sr_net
+    environment:
+      TZ: Asia/Bangkok
+
+  public_endpoint:
+    build: public_endpoint/
+    working_dir: /app
+    command: python3 public_server_fastapi.py
+    ports:
+      - 7620:8000
+    networks:
+      - sr_net
+    depends_on:
+      - sr-mq
+    volumes:
+      - /home/palm/PycharmProjects/mq_sample/public_endpoint:/app
+    restart: always
+
+  mq_intermediary:
+    build: mq_intermediary/
+    working_dir: /app
+    command: python3 inter_server_fastapi.py
+    networks:
+      - sr_net
+    depends_on:
+      - sr-mq
+    volumes:
+      - /home/palm/PycharmProjects/mq_sample/mq_intermediary:/app
+    restart: always
+
+#  gpu_worker:
+#    build: gpu_worker/
+#    command: python worker_pytorch.py
+#    working_dir: /code
+#    volumes:
+#      - /home/palm/PycharmProjects/mq_sample/gpu_worker:/code
+#    networks:
+#      - sr_net
+#    depends_on:
+#      - sr-mq
+
+networks:
+  sr_net:
